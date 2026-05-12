@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum EstadoDocumento {
+  BORRADOR
+  REVISION
+  APROBADO
+  OBSOLETO
+}
+
+enum EstadoNoConformidad {
+  ABIERTA
+  EN_PROCESO
+  CERRADA
+  CANCELADA
+}
+
+enum TipoAuditoria {
+  INTERNA
+  EXTERNA
+  SEGUIMIENTO
+}
+
+enum EstadoAuditoria {
+  PLANIFICADA
+  EN_CURSO
+  COMPLETADA
+  CANCELADA
+}
+
+enum NivelRiesgo {
+  BAJO
+  MEDIO
+  ALTO
+  CRITICO
+}
+
+enum EstadoRiesgo {
+  IDENTIFICADO
+  EN_TRATAMIENTO
+  CONTROLADO
+  CERRADO
+}
+
+enum TipoResiduo {
+  PELIGROSO
+  NO_PELIGROSO
+  RECICLABLE
+  ORGANICO
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nombre    String
+  apellido  String
+  role      Role     @default(USER)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documentos      Documento[]
+  noConformidades NoConformidad[]
+  auditorias      Auditoria[]
+  riesgos         Riesgo[]
+  accidentes      Accidente[]
+
+  @@map("users")
+}
+
+model Documento {
+  id          String          @id @default(cuid())
+  codigo      String          @unique
+  titulo      String
+  descripcion String?
+  version     String          @default("1.0")
+  estado      EstadoDocumento @default(BORRADOR)
+  modulo      String
+  categoria   String
+  archivo     String?
+  fechaEmision    DateTime    @default(now())
+  fechaRevision   DateTime?
+  creadoPor   User            @relation(fields: [creadoPorId], references: [id])
+  creadoPorId String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("documentos")
+}
+
+model NoConformidad {
+  id           String              @id @default(cuid())
+  codigo       String              @unique
+  titulo       String
+  descripcion  String
+  origen       String
+  estado       EstadoNoConformidad @default(ABIERTA)
+  prioridad    String              @default("MEDIA")
+  accionCorrectiva String?
+  fechaDeteccion   DateTime        @default(now())
+  fechaCierre      DateTime?
+  responsable  User                @relation(fields: [responsableId], references: [id])
+  responsableId String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@map("no_conformidades")
+}
+
+model Auditoria {
+  id           String          @id @default(cuid())
+  codigo       String          @unique
+  titulo       String
+  tipo         TipoAuditoria   @default(INTERNA)
+  estado       EstadoAuditoria @default(PLANIFICADA)
+  modulo       String
+  alcance      String?
+  fechaInicio  DateTime
+  fechaFin     DateTime
+  auditor      String
+  hallazgos    String?
+  conclusiones String?
+  responsable  User            @relation(fields: [responsableId], references: [id])
+  responsableId String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("auditorias")
+}
+
+model AspectoAmbiental {
+  id           String   @id @default(cuid())
+  codigo       String   @unique
+  actividad    String
+  aspecto      String
+  impacto      String
+  significativo Boolean  @default(false)
+  medidas      String?
+  indicador    String?
+  meta         String?
+  estado       String   @default("ACTIVO")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("aspectos_ambientales")
+}
+
+model Residuo {
+  id           String      @id @default(cuid())
+  codigo       String      @unique
+  nombre       String
+  tipo         TipoResiduo
+  cantidad     Float
+  unidad       String
+  gestor       String?
+  destino      String?
+  certificado  String?
+  fecha        DateTime    @default(now())
+  observaciones String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("residuos")
+}
+
+model Consumo {
+  id        String   @id @default(cuid())
+  tipo      String
+  cantidad  Float
+  unidad    String
+  periodo   String
+  fecha     DateTime @default(now())
+  area      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("consumos")
+}
+
+model Riesgo {
+  id            String       @id @default(cuid())
+  codigo        String       @unique
+  actividad     String
+  peligro       String
+  riesgo        String
+  nivel         NivelRiesgo  @default(MEDIO)
+  estado        EstadoRiesgo @default(IDENTIFICADO)
+  probabilidad  Int          @default(1)
+  consecuencia  Int          @default(1)
+  medidas       String?
+  epi           String?
+  responsable   User         @relation(fields: [responsableId], references: [id])
+  responsableId String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("riesgos")
+}
+
+model Accidente {
+  id            String   @id @default(cuid())
+  codigo        String   @unique
+  tipo          String
+  descripcion   String
+  lugar         String
+  fecha         DateTime
+  lesionados    Int      @default(0)
+  diasBaja      Int      @default(0)
+  gravedad      String   @default("LEVE")
+  causas        String?
+  accionesCorrectivas String?
+  investigado   Boolean  @default(false)
+  responsable   User     @relation(fields: [responsableId], references: [id])
+  responsableId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("accidentes")
+}
