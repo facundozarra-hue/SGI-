@@ -1,4 +1,4 @@
-import { FileText, AlertCircle, ClipboardList, Recycle, Trash2, AlertTriangle, Ambulance, TrendingUp, ShieldCheck, Leaf, HardHat } from 'lucide-react';
+import { FileText, AlertCircle, ClipboardList, Recycle, Trash2, AlertTriangle, Siren, TrendingUp, ShieldCheck, Leaf, HardHat } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatsCard from '../components/ui/StatsCard';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -59,7 +59,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   doc: <FileText size={14} className="text-indigo-500" />,
   audit: <ClipboardList size={14} className="text-blue-500" />,
   riesgo: <AlertTriangle size={14} className="text-amber-500" />,
-  accidente: <Ambulance size={14} className="text-rose-500" />,
+  accidente: <Siren size={14} className="text-rose-500" />,
 };
 
 export default function Dashboard() {

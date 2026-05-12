@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShieldCheck, Leaf, HardHat,
   FileText, AlertCircle, ClipboardList,
-  Recycle, Trash2, AlertTriangle, Ambulance,
+  Recycle, Trash2, AlertTriangle, Siren,
   ChevronDown, ChevronRight, Building2,
 } from 'lucide-react';
 
@@ -42,7 +42,7 @@ const navItems: NavItem[] = [
     icon: <HardHat size={18} />,
     children: [
       { label: 'Evaluación de Riesgos', href: '/seguridad/riesgos', icon: <AlertTriangle size={16} /> },
-      { label: 'Accidentes', href: '/seguridad/accidentes', icon: <Ambulance size={16} /> },
+      { label: 'Accidentes', href: '/seguridad/accidentes', icon: <Siren size={16} /> },
     ],
   },
 ];

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ambulance, Plus, Search, CheckCircle, XCircle } from 'lucide-react';
+import { Siren, Plus, Search, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { Accidente } from '../../types';
 
@@ -30,7 +30,7 @@ export default function Accidentes() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Ambulance size={24} className="text-rose-600" />
+            <Siren size={24} className="text-rose-600" />
             Accidentes e Incidentes
           </h1>
           <p className="text-gray-500 text-sm mt-0.5">Registro y seguimiento de siniestros · ISO 45001</p>
