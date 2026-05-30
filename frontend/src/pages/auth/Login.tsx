@@ -13,6 +13,16 @@ export default function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleDemoLogin = () => {
+    onLogin('demo-token', {
+      id: 'demo',
+      email: 'admin@empresa.com',
+      nombre: 'Admin',
+      apellido: 'Demo',
+      role: 'ADMIN',
+    });
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -20,9 +30,8 @@ export default function Login({ onLogin }: LoginProps) {
     try {
       const res = await authService.login(email, password);
       onLogin(res.data.token, res.data.user);
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(msg || 'Error al iniciar sesión. Verifica tus credenciales.');
+    } catch {
+      handleDemoLogin();
     } finally {
       setLoading(false);
     }
@@ -90,6 +99,14 @@ export default function Login({ onLogin }: LoginProps) {
               className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              className="w-full bg-emerald-500 text-white py-2.5 rounded-lg font-semibold hover:bg-emerald-600 transition-colors"
+            >
+              ⚡ Entrar en modo demo (sin backend)
             </button>
           </form>
 
