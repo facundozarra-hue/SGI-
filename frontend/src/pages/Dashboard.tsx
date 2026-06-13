@@ -1,102 +1,105 @@
-import { FileText, AlertCircle, ClipboardList, Recycle, Trash2, AlertTriangle, Siren, TrendingUp, ShieldCheck, Leaf, HardHat } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { FileText, AlertCircle, ClipboardList, Recycle, Trash2, AlertTriangle, Siren, ShieldCheck, Leaf, HardHat, ArrowRight } from 'lucide-react';
+import { useData } from '../context/DataContext';
 import StatsCard from '../components/ui/StatsCard';
-import StatusBadge from '../components/ui/StatusBadge';
-
-const stats = [
-  { title: 'Documentos', value: 24, icon: <FileText size={22} />, color: 'indigo' as const, subtitle: '3 pendientes de revisión' },
-  { title: 'No Conformidades', value: 8, icon: <AlertCircle size={22} />, color: 'red' as const, subtitle: '2 abiertas críticas' },
-  { title: 'Auditorías', value: 5, icon: <ClipboardList size={22} />, color: 'blue' as const, subtitle: '1 en curso' },
-  { title: 'Aspectos Ambientales', value: 15, icon: <Recycle size={22} />, color: 'green' as const, subtitle: '4 significativos' },
-  { title: 'Residuos Gestionados', value: 32, icon: <Trash2 size={22} />, color: 'yellow' as const, subtitle: 'Este mes' },
-  { title: 'Riesgos Identificados', value: 41, icon: <AlertTriangle size={22} />, color: 'purple' as const, subtitle: '7 nivel alto/crítico' },
-];
-
-const recentActivity = [
-  { id: 1, type: 'nc', codigo: 'NC-2024-012', descripcion: 'Fallo en proceso de soldadura', estado: 'ABIERTA', fecha: '2024-01-15', modulo: 'Calidad' },
-  { id: 2, type: 'doc', codigo: 'DOC-PRC-045', descripcion: 'Procedimiento de gestión de residuos', estado: 'APROBADO', fecha: '2024-01-14', modulo: 'Medio Ambiente' },
-  { id: 3, type: 'audit', codigo: 'AUD-2024-003', descripcion: 'Auditoría interna ISO 9001 Q1', estado: 'EN_CURSO', fecha: '2024-01-13', modulo: 'Calidad' },
-  { id: 4, type: 'riesgo', codigo: 'RSG-2024-018', descripcion: 'Trabajo en altura sector B', estado: 'EN_TRATAMIENTO', fecha: '2024-01-12', modulo: 'Seguridad' },
-  { id: 5, type: 'accidente', codigo: 'ACC-2024-002', descripcion: 'Caída al mismo nivel en almacén', estado: 'CERRADA', fecha: '2024-01-10', modulo: 'Seguridad' },
-];
-
-const modules = [
-  {
-    title: 'Calidad',
-    description: 'ISO 9001',
-    icon: <ShieldCheck size={24} />,
-    color: 'bg-indigo-600',
-    links: [
-      { label: 'Documentos', href: '/calidad/documentos' },
-      { label: 'No Conformidades', href: '/calidad/no-conformidades' },
-      { label: 'Auditorías', href: '/calidad/auditorias' },
-    ],
-  },
-  {
-    title: 'Medio Ambiente',
-    description: 'ISO 14001',
-    icon: <Leaf size={24} />,
-    color: 'bg-green-600',
-    links: [
-      { label: 'Aspectos Ambientales', href: '/medioambiente/aspectos' },
-      { label: 'Residuos', href: '/medioambiente/residuos' },
-    ],
-  },
-  {
-    title: 'Seguridad y Salud',
-    description: 'ISO 45001',
-    icon: <HardHat size={24} />,
-    color: 'bg-amber-600',
-    links: [
-      { label: 'Evaluación de Riesgos', href: '/seguridad/riesgos' },
-      { label: 'Accidentes', href: '/seguridad/accidentes' },
-    ],
-  },
-];
-
-const typeIcons: Record<string, React.ReactNode> = {
-  nc: <AlertCircle size={14} className="text-red-500" />,
-  doc: <FileText size={14} className="text-indigo-500" />,
-  audit: <ClipboardList size={14} className="text-blue-500" />,
-  riesgo: <AlertTriangle size={14} className="text-amber-500" />,
-  accidente: <Siren size={14} className="text-rose-500" />,
-};
 
 export default function Dashboard() {
+  const { documentos, noConformidades, auditorias, aspectos, residuos, riesgos, accidentes, empresa } = useData();
+
+  const ncsAbiertas = noConformidades.filter(n => n.estado === 'Abierta' || n.estado === 'En proceso').length;
+  const riesgosCriticos = riesgos.filter(r => r.nivel === 'Crítico' || r.nivel === 'Alto').length;
+  const auditoriasActivas = auditorias.filter(a => a.estado === 'Planificada' || a.estado === 'En curso').length;
+  const aspectosSignificativos = aspectos.filter(a => a.significativo).length;
+
+  const stats = [
+    { title: 'Documentos', value: documentos.length, icon: <FileText size={22} />, color: 'indigo' as const, subtitle: `${documentos.filter(d => d.estado === 'Aprobado').length} aprobados` },
+    { title: 'No Conformidades abiertas', value: ncsAbiertas, icon: <AlertCircle size={22} />, color: 'red' as const, subtitle: `${noConformidades.length} total registradas` },
+    { title: 'Auditorías activas', value: auditoriasActivas, icon: <ClipboardList size={22} />, color: 'blue' as const, subtitle: `${auditorias.length} total registradas` },
+    { title: 'Aspectos significativos', value: aspectosSignificativos, icon: <Recycle size={22} />, color: 'green' as const, subtitle: `${aspectos.length} total identificados` },
+    { title: 'Residuos registrados', value: residuos.length, icon: <Trash2 size={22} />, color: 'yellow' as const, subtitle: 'Este período' },
+    { title: 'Riesgos críticos/altos', value: riesgosCriticos, icon: <AlertTriangle size={22} />, color: 'purple' as const, subtitle: `${riesgos.length} total identificados` },
+  ];
+
+  const modulos = [
+    {
+      titulo: 'Calidad',
+      norma: 'ISO 9001',
+      icon: <ShieldCheck size={22} />,
+      color: 'bg-indigo-600',
+      links: [
+        { label: 'Documentos', href: '/calidad/documentos', count: documentos.length },
+        { label: 'No Conformidades', href: '/calidad/no-conformidades', count: noConformidades.length },
+        { label: 'Auditorías', href: '/calidad/auditorias', count: auditorias.length },
+      ],
+    },
+    {
+      titulo: 'Medio Ambiente',
+      norma: 'ISO 14001',
+      icon: <Leaf size={22} />,
+      color: 'bg-green-600',
+      links: [
+        { label: 'Aspectos Ambientales', href: '/medioambiente/aspectos', count: aspectos.length },
+        { label: 'Residuos', href: '/medioambiente/residuos', count: residuos.length },
+      ],
+    },
+    {
+      titulo: 'Seguridad y Salud',
+      norma: 'ISO 45001',
+      icon: <HardHat size={22} />,
+      color: 'bg-amber-600',
+      links: [
+        { label: 'Evaluación de Riesgos', href: '/seguridad/riesgos', count: riesgos.length },
+        { label: 'Accidentes e Incidentes', href: '/seguridad/accidentes', count: accidentes.length },
+      ],
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {empresa.nombre ? `Bienvenido, ${empresa.nombre}` : 'Panel de Control'}
+        </h1>
         <p className="text-gray-500 text-sm mt-0.5">Resumen general del Sistema de Gestión Integrado</p>
       </div>
 
+      {(documentos.length + noConformidades.length + riesgos.length) === 0 && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 flex items-start gap-4">
+          <div className="text-2xl">👋</div>
+          <div>
+            <p className="font-semibold text-indigo-800">¡Empieza a cargar tus datos!</p>
+            <p className="text-indigo-600 text-sm mt-1">
+              Usa el menú de la izquierda para acceder a cada módulo y comenzar a registrar tus documentos, no conformidades, riesgos y más.
+              Si aún no configuraste la empresa, ve a{' '}
+              <Link to="/configuracion" className="underline font-medium">Configuración</Link>.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {stats.map((s) => (
-          <StatsCard key={s.title} {...s} />
-        ))}
+        {stats.map(s => <StatsCard key={s.title} {...s} />)}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {modules.map((mod) => (
-          <div key={mod.title} className="card">
+        {modulos.map(mod => (
+          <div key={mod.titulo} className="card">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`${mod.color} text-white p-2.5 rounded-xl`}>
-                {mod.icon}
-              </div>
+              <div className={`${mod.color} text-white p-2.5 rounded-xl`}>{mod.icon}</div>
               <div>
-                <h3 className="font-semibold text-gray-900">{mod.title}</h3>
-                <p className="text-xs text-gray-500">{mod.description}</p>
+                <h3 className="font-bold text-gray-900">{mod.titulo}</h3>
+                <p className="text-xs text-gray-500">{mod.norma}</p>
               </div>
             </div>
-            <div className="space-y-1.5">
-              {mod.links.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition-colors group"
-                >
+            <div className="space-y-1">
+              {mod.links.map(link => (
+                <Link key={link.href} to={link.href}
+                  className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition-colors group">
                   <span className="text-sm text-gray-700 group-hover:text-indigo-600">{link.label}</span>
-                  <TrendingUp size={14} className="text-gray-300 group-hover:text-indigo-400" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{link.count}</span>
+                    <ArrowRight size={14} className="text-gray-300 group-hover:text-indigo-400" />
+                  </div>
                 </Link>
               ))}
             </div>
@@ -104,23 +107,30 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="card">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Actividad reciente</h2>
-        <div className="divide-y divide-gray-100">
-          {recentActivity.map((item) => (
-            <div key={item.id} className="flex items-center gap-4 py-3">
-              <div className="flex-shrink-0">
-                {typeIcons[item.type]}
+      {accidentes.length > 0 && (
+        <div className="card">
+          <h2 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <Siren size={18} className="text-rose-500" />
+            Últimos accidentes registrados
+          </h2>
+          <div className="divide-y divide-gray-100">
+            {accidentes.slice(0, 5).map(a => (
+              <div key={a.id} className="py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{a.descripcion}</p>
+                  <p className="text-xs text-gray-500">{a.lugar} · {new Date(a.fecha).toLocaleDateString('es-ES')}</p>
+                </div>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                  a.gravedad === 'Mortal' ? 'bg-red-900 text-red-100' :
+                  a.gravedad === 'Muy grave' ? 'bg-red-100 text-red-700' :
+                  a.gravedad === 'Grave' ? 'bg-orange-100 text-orange-700' :
+                  'bg-yellow-100 text-yellow-700'
+                }`}>{a.gravedad}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{item.descripcion}</p>
-                <p className="text-xs text-gray-500">{item.codigo} · {item.modulo} · {item.fecha}</p>
-              </div>
-              <StatusBadge status={item.estado} />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

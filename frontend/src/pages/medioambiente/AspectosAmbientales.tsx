@@ -1,118 +1,146 @@
 import { useState } from 'react';
-import { Recycle, Plus, Search } from 'lucide-react';
-import StatusBadge from '../../components/ui/StatusBadge';
-import { AspectoAmbiental } from '../../types';
+import { Recycle, Plus, Pencil, Trash2, Download } from 'lucide-react';
+import { useData, AspectoAmbiental } from '../../context/DataContext';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import EmptyState from '../../components/ui/EmptyState';
 
-const mockAspectos: AspectoAmbiental[] = [
-  { id: '1', codigo: 'ASP-001', actividad: 'Producción', aspecto: 'Consumo de agua', impacto: 'Agotamiento de recursos hídricos', significativo: true, medidas: 'Instalación de caudalímetros, reutilización de agua', indicador: 'm³/unidad producida', meta: 'Reducir 10% anual', estado: 'ACTIVO', createdAt: '2023-01-10' },
-  { id: '2', codigo: 'ASP-002', actividad: 'Almacén', aspecto: 'Generación de residuos peligrosos', impacto: 'Contaminación del suelo', significativo: true, medidas: 'Gestión con empresa autorizada, contenedores específicos', indicador: 'kg/mes', meta: 'Reducir 5% trimestral', estado: 'ACTIVO', createdAt: '2023-01-10' },
-  { id: '3', codigo: 'ASP-003', actividad: 'Oficinas', aspecto: 'Consumo energético', impacto: 'Emisiones CO₂', significativo: false, medidas: 'Sensores de presencia, equipos A+', indicador: 'kWh/mes', meta: 'Reducir 8% anual', estado: 'ACTIVO', createdAt: '2023-02-15' },
-  { id: '4', codigo: 'ASP-004', actividad: 'Mantenimiento', aspecto: 'Vertido de aceites', impacto: 'Contaminación de suelo y agua', significativo: true, medidas: 'Bandejas de contención, gestión con gestor autorizado', indicador: 'incidentes/año', meta: '0 vertidos accidentales', estado: 'ACTIVO', createdAt: '2023-03-01' },
-  { id: '5', codigo: 'ASP-005', actividad: 'Transporte', aspecto: 'Emisiones de vehículos', impacto: 'Contaminación atmosférica', significativo: false, medidas: 'Mantenimiento preventivo, rutas optimizadas', indicador: 'kg CO₂/km', meta: 'Renovar flota Euro 6', estado: 'ACTIVO', createdAt: '2023-04-20' },
-  { id: '6', codigo: 'ASP-006', actividad: 'Limpieza', aspecto: 'Uso de productos químicos', impacto: 'Contaminación de agua residual', significativo: false, medidas: 'Productos ecológicos certificados', indicador: 'litros/mes', meta: 'Migrar al 80% productos eco', estado: 'ACTIVO', createdAt: '2023-05-10' },
-];
+const VACIO: Omit<AspectoAmbiental, 'id' | 'createdAt'> = {
+  codigo: '', actividad: '', aspecto: '', impacto: '',
+  significativo: false, medidas: '', responsable: '', estado: 'Activo',
+};
 
 export default function AspectosAmbientales() {
-  const [search, setSearch] = useState('');
-  const [sigFilter, setSigFilter] = useState('Todos');
+  const { aspectos, addAspecto, updateAspecto, deleteAspecto, exportarCSV } = useData();
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState(VACIO);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  const filtered = mockAspectos.filter((a) => {
-    const matchSearch = a.aspecto.toLowerCase().includes(search.toLowerCase()) || a.actividad.toLowerCase().includes(search.toLowerCase()) || a.codigo.toLowerCase().includes(search.toLowerCase());
-    const matchSig = sigFilter === 'Todos' || (sigFilter === 'Significativo' ? a.significativo : !a.significativo);
-    return matchSearch && matchSig;
-  });
+  const abrirNuevo = () => { setForm(VACIO); setEditId(null); setModal(true); };
+  const abrirEditar = (a: AspectoAmbiental) => {
+    const { id, createdAt, ...rest } = a; void id; void createdAt;
+    setForm(rest); setEditId(a.id); setModal(true);
+  };
+  const guardar = () => {
+    if (!form.aspecto.trim()) return alert('El aspecto es obligatorio');
+    if (editId) updateAspecto(editId, form); else addAspecto(form);
+    setModal(false);
+  };
 
-  const significativos = mockAspectos.filter((a) => a.significativo).length;
+  const significativos = aspectos.filter(a => a.significativo).length;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Recycle size={24} className="text-green-600" />
-            Aspectos Ambientales
+            <Recycle size={24} className="text-green-600" /> Aspectos Ambientales
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Identificación y evaluación · ISO 14001</p>
+          <p className="text-gray-500 text-sm">{aspectos.length} identificados · {significativos} significativos</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Plus size={16} />
-          Nuevo aspecto
-        </button>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-3xl font-bold text-green-700">{mockAspectos.length}</p>
-          <p className="text-sm font-medium text-green-600 mt-1">Total identificados</p>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-3xl font-bold text-red-700">{significativos}</p>
-          <p className="text-sm font-medium text-red-600 mt-1">Significativos</p>
-        </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <p className="text-3xl font-bold text-gray-700">{mockAspectos.length - significativos}</p>
-          <p className="text-sm font-medium text-gray-600 mt-1">No significativos</p>
+        <div className="flex gap-2">
+          <button onClick={() => exportarCSV('aspectos_ambientales', aspectos)} className="btn-secondary flex items-center gap-1.5 text-xs"><Download size={14} /> Exportar</button>
+          <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2"><Plus size={16} /> Nuevo aspecto</button>
         </div>
       </div>
 
       <div className="card">
-        <div className="flex gap-3 mb-5">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por aspecto, actividad o código..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input pl-9"
-            />
-          </div>
-          <select value={sigFilter} onChange={(e) => setSigFilter(e.target.value)} className="input w-auto">
-            <option>Todos</option>
-            <option value="Significativo">Significativos</option>
-            <option value="NoSignificativo">No significativos</option>
-          </select>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-y border-gray-200">
-              <tr>
-                <th className="table-header">Código</th>
-                <th className="table-header">Actividad</th>
-                <th className="table-header">Aspecto</th>
-                <th className="table-header">Impacto</th>
-                <th className="table-header">Significativo</th>
-                <th className="table-header">Indicador</th>
-                <th className="table-header">Meta</th>
-                <th className="table-header">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((asp) => (
-                <tr key={asp.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
-                  <td className="table-cell font-mono text-xs font-medium text-green-700">{asp.codigo}</td>
-                  <td className="table-cell font-medium text-gray-800">{asp.actividad}</td>
-                  <td className="table-cell text-gray-700">{asp.aspecto}</td>
-                  <td className="table-cell text-gray-500 text-xs max-w-xs">{asp.impacto}</td>
-                  <td className="table-cell">
-                    {asp.significativo
-                      ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Sí</span>
-                      : <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">No</span>
-                    }
-                  </td>
-                  <td className="table-cell text-gray-500 text-xs">{asp.indicador ?? '—'}</td>
-                  <td className="table-cell text-gray-500 text-xs max-w-[150px] truncate">{asp.meta ?? '—'}</td>
-                  <td className="table-cell"><StatusBadge status={asp.estado} /></td>
+        {aspectos.length === 0 ? (
+          <EmptyState icon={<Recycle size={28} />} titulo="Sin aspectos registrados" descripcion="Identificá los aspectos e impactos ambientales de tu empresa." accion={<button onClick={abrirNuevo} className="btn-primary">+ Nuevo aspecto</button>} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-y border-gray-200">
+                <tr>
+                  <th className="table-header">Actividad</th>
+                  <th className="table-header">Aspecto</th>
+                  <th className="table-header">Impacto</th>
+                  <th className="table-header text-center">Significativo</th>
+                  <th className="table-header">Medidas</th>
+                  <th className="table-header">Responsable</th>
+                  <th className="table-header w-20"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="text-center py-10 text-gray-400 text-sm">No se encontraron aspectos ambientales</div>
-          )}
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {aspectos.map(a => (
+                  <tr key={a.id} className={`hover:bg-gray-50 ${a.significativo ? 'bg-red-50/30' : ''}`}>
+                    <td className="table-cell font-medium text-gray-800">{a.actividad}</td>
+                    <td className="table-cell text-gray-700">{a.aspecto}</td>
+                    <td className="table-cell text-gray-500 text-xs max-w-[160px]">{a.impacto}</td>
+                    <td className="table-cell text-center">
+                      {a.significativo
+                        ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Sí</span>
+                        : <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">No</span>}
+                    </td>
+                    <td className="table-cell text-gray-500 text-xs max-w-[160px] truncate">{a.medidas || '—'}</td>
+                    <td className="table-cell text-gray-500">{a.responsable || '—'}</td>
+                    <td className="table-cell">
+                      <div className="flex gap-1">
+                        <button onClick={() => abrirEditar(a)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setConfirmId(a.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {modal && (
+        <Modal title={editId ? 'Editar aspecto' : 'Nuevo aspecto ambiental'} onClose={() => setModal(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                <input className="input" value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} placeholder="ASP-001" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select className="input" value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })}>
+                  {['Activo', 'Inactivo'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Actividad</label>
+              <input className="input" value={form.actividad} onChange={e => setForm({ ...form, actividad: e.target.value })} placeholder="Ej: Producción, Mantenimiento, Oficinas..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Aspecto ambiental *</label>
+              <input className="input" value={form.aspecto} onChange={e => setForm({ ...form, aspecto: e.target.value })} placeholder="Ej: Consumo de agua, Generación de residuos..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Impacto asociado</label>
+              <input className="input" value={form.impacto} onChange={e => setForm({ ...form, impacto: e.target.value })} placeholder="Ej: Contaminación del suelo, Agotamiento de recursos..." />
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <input type="checkbox" id="sig" checked={form.significativo} onChange={e => setForm({ ...form, significativo: e.target.checked })} className="w-4 h-4 accent-red-600 cursor-pointer" />
+              <label htmlFor="sig" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Aspecto <span className="text-red-600">significativo</span> (requiere control especial)
+              </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Medidas de control</label>
+              <textarea className="input resize-none" rows={2} value={form.medidas} onChange={e => setForm({ ...form, medidas: e.target.value })} placeholder="¿Qué se hace para minimizar el impacto?" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Responsable</label>
+              <input className="input" value={form.responsable} onChange={e => setForm({ ...form, responsable: e.target.value })} placeholder="Nombre del responsable" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setModal(false)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={guardar} className="flex-1 btn-primary">Guardar</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmId && (
+        <ConfirmDialog mensaje="Se eliminará este aspecto ambiental." onConfirm={() => { deleteAspecto(confirmId); setConfirmId(null); }} onCancel={() => setConfirmId(null)} />
+      )}
     </div>
   );
 }

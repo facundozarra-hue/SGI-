@@ -1,117 +1,167 @@
 import { useState } from 'react';
-import { Trash2, Plus, Search } from 'lucide-react';
+import { Trash2, Plus, Pencil, Download } from 'lucide-react';
+import { useData, Residuo } from '../../context/DataContext';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import EmptyState from '../../components/ui/EmptyState';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { Residuo } from '../../types';
 
-const mockResiduos: Residuo[] = [
-  { id: '1', codigo: 'RSD-2024-001', nombre: 'Aceite hidráulico usado', tipo: 'PELIGROSO', cantidad: 120, unidad: 'litros', gestor: 'Gestora Ambiental Norte S.L.', destino: 'Reciclaje energético', fecha: '2024-01-05', observaciones: 'Certificado de destrucción emitido', createdAt: '2024-01-05' },
-  { id: '2', codigo: 'RSD-2024-002', nombre: 'Cartón y papel de oficina', tipo: 'RECICLABLE', cantidad: 85, unidad: 'kg', gestor: 'RecyPaper S.A.', destino: 'Reciclaje material', fecha: '2024-01-08', createdAt: '2024-01-08' },
-  { id: '3', codigo: 'RSD-2024-003', nombre: 'Residuos de comedor', tipo: 'ORGANICO', cantidad: 210, unidad: 'kg', gestor: 'BioGest Municipal', destino: 'Compostaje', fecha: '2024-01-10', createdAt: '2024-01-10' },
-  { id: '4', codigo: 'RSD-2024-004', nombre: 'Envases plásticos contaminados', tipo: 'PELIGROSO', cantidad: 45, unidad: 'kg', gestor: 'Gestora Ambiental Norte S.L.', destino: 'Incineración controlada', fecha: '2024-01-12', observaciones: 'Código LER 150110*', createdAt: '2024-01-12' },
-  { id: '5', codigo: 'RSD-2024-005', nombre: 'Chatarra metálica', tipo: 'RECICLABLE', cantidad: 650, unidad: 'kg', gestor: 'Recuperaciones García', destino: 'Fundición y reciclaje', fecha: '2024-01-15', createdAt: '2024-01-15' },
-  { id: '6', codigo: 'RSD-2024-006', nombre: 'Residuos mixtos', tipo: 'NO_PELIGROSO', cantidad: 320, unidad: 'kg', gestor: 'Gestión Municipal', destino: 'Vertedero autorizado', fecha: '2024-01-18', createdAt: '2024-01-18' },
-];
-
-const tipoStats = {
-  PELIGROSO: mockResiduos.filter((r) => r.tipo === 'PELIGROSO').reduce((acc, r) => acc + r.cantidad, 0),
-  RECICLABLE: mockResiduos.filter((r) => r.tipo === 'RECICLABLE').reduce((acc, r) => acc + r.cantidad, 0),
-  ORGANICO: mockResiduos.filter((r) => r.tipo === 'ORGANICO').reduce((acc, r) => acc + r.cantidad, 0),
-  NO_PELIGROSO: mockResiduos.filter((r) => r.tipo === 'NO_PELIGROSO').reduce((acc, r) => acc + r.cantidad, 0),
+const VACIO: Omit<Residuo, 'id' | 'createdAt'> = {
+  codigo: '', nombre: '', tipo: 'Reciclable', cantidad: '',
+  unidad: 'kg', gestor: '', destino: '',
+  fecha: new Date().toISOString().slice(0, 10), observaciones: '',
 };
 
 export default function Residuos() {
-  const [search, setSearch] = useState('');
-  const [tipoFilter, setTipoFilter] = useState('Todos');
+  const { residuos, addResiduo, updateResiduo, deleteResiduo, exportarCSV } = useData();
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState(VACIO);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  const filtered = mockResiduos.filter((r) => {
-    const matchSearch = r.nombre.toLowerCase().includes(search.toLowerCase()) || r.codigo.toLowerCase().includes(search.toLowerCase());
-    const matchTipo = tipoFilter === 'Todos' || r.tipo === tipoFilter;
-    return matchSearch && matchTipo;
-  });
+  const abrirNuevo = () => { setForm(VACIO); setEditId(null); setModal(true); };
+  const abrirEditar = (r: Residuo) => {
+    const { id, createdAt, ...rest } = r; void id; void createdAt;
+    setForm(rest); setEditId(r.id); setModal(true);
+  };
+  const guardar = () => {
+    if (!form.nombre.trim()) return alert('El nombre es obligatorio');
+    if (editId) updateResiduo(editId, form); else addResiduo(form);
+    setModal(false);
+  };
+
+  const totalPorTipo = ['Peligroso', 'No peligroso', 'Reciclable', 'Orgánico'].map(tipo => ({
+    tipo, total: residuos.filter(r => r.tipo === tipo).reduce((acc, r) => acc + (parseFloat(r.cantidad) || 0), 0),
+    count: residuos.filter(r => r.tipo === tipo).length,
+  })).filter(t => t.count > 0);
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Trash2 size={24} className="text-amber-600" />
-            Gestión de Residuos
+            <Trash2 size={24} className="text-amber-600" /> Gestión de Residuos
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Control y seguimiento de residuos generados · ISO 14001</p>
+          <p className="text-gray-500 text-sm">{residuos.length} registros</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Plus size={16} />
-          Registrar residuo
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => exportarCSV('residuos', residuos)} className="btn-secondary flex items-center gap-1.5 text-xs"><Download size={14} /> Exportar</button>
+          <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2"><Plus size={16} /> Registrar residuo</button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Peligrosos', cantidad: tipoStats.PELIGROSO, color: 'bg-red-50 border-red-200 text-red-700' },
-          { label: 'Reciclables', cantidad: tipoStats.RECICLABLE, color: 'bg-green-50 border-green-200 text-green-700' },
-          { label: 'Orgánicos', cantidad: tipoStats.ORGANICO, color: 'bg-lime-50 border-lime-200 text-lime-700' },
-          { label: 'No peligrosos', cantidad: tipoStats.NO_PELIGROSO, color: 'bg-gray-50 border-gray-200 text-gray-700' },
-        ].map((item) => (
-          <div key={item.label} className={`rounded-xl p-4 border ${item.color}`}>
-            <p className="text-2xl font-bold">{item.cantidad.toLocaleString()} kg</p>
-            <p className="text-sm font-medium mt-1 opacity-80">{item.label}</p>
-          </div>
-        ))}
-      </div>
+      {totalPorTipo.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {totalPorTipo.map(t => (
+            <div key={t.tipo} className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-sm">
+              <p className="text-xl font-bold text-gray-800">{t.total.toLocaleString('es-ES', { maximumFractionDigits: 1 })}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t.tipo}</p>
+              <p className="text-xs text-gray-400">{t.count} registro{t.count !== 1 ? 's' : ''}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="card">
-        <div className="flex gap-3 mb-5">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar residuos..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input pl-9"
-            />
-          </div>
-          <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} className="input w-auto">
-            {['Todos', 'PELIGROSO', 'NO_PELIGROSO', 'RECICLABLE', 'ORGANICO'].map((t) => (
-              <option key={t} value={t}>{t === 'Todos' ? 'Todos los tipos' : t.replace('_', ' ')}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-y border-gray-200">
-              <tr>
-                <th className="table-header">Código</th>
-                <th className="table-header">Nombre</th>
-                <th className="table-header">Tipo</th>
-                <th className="table-header">Cantidad</th>
-                <th className="table-header">Gestor</th>
-                <th className="table-header">Destino</th>
-                <th className="table-header">Fecha</th>
-                <th className="table-header">Obs.</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="table-cell font-mono text-xs font-medium text-amber-700">{r.codigo}</td>
-                  <td className="table-cell font-medium text-gray-900">{r.nombre}</td>
-                  <td className="table-cell"><StatusBadge status={r.tipo} /></td>
-                  <td className="table-cell font-semibold text-gray-800">{r.cantidad.toLocaleString()} {r.unidad}</td>
-                  <td className="table-cell text-gray-500 text-xs">{r.gestor ?? '—'}</td>
-                  <td className="table-cell text-gray-500 text-xs">{r.destino ?? '—'}</td>
-                  <td className="table-cell text-gray-500">{new Date(r.fecha).toLocaleDateString('es-ES')}</td>
-                  <td className="table-cell text-gray-400 text-xs max-w-[120px] truncate">{r.observaciones ?? '—'}</td>
+        {residuos.length === 0 ? (
+          <EmptyState icon={<Trash2 size={28} />} titulo="Sin residuos registrados" descripcion="Registrá los residuos generados por la empresa para su seguimiento." accion={<button onClick={abrirNuevo} className="btn-primary">+ Registrar residuo</button>} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-y border-gray-200">
+                <tr>
+                  <th className="table-header">Fecha</th>
+                  <th className="table-header">Nombre</th>
+                  <th className="table-header">Tipo</th>
+                  <th className="table-header">Cantidad</th>
+                  <th className="table-header">Gestor</th>
+                  <th className="table-header">Destino</th>
+                  <th className="table-header w-20"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="text-center py-10 text-gray-400 text-sm">No se encontraron residuos</div>
-          )}
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {residuos.map(r => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="table-cell text-gray-500">{new Date(r.fecha).toLocaleDateString('es-ES')}</td>
+                    <td className="table-cell font-medium text-gray-900">{r.nombre}</td>
+                    <td className="table-cell"><StatusBadge status={r.tipo} /></td>
+                    <td className="table-cell font-semibold">{r.cantidad} {r.unidad}</td>
+                    <td className="table-cell text-gray-500 text-sm">{r.gestor || '—'}</td>
+                    <td className="table-cell text-gray-500 text-sm">{r.destino || '—'}</td>
+                    <td className="table-cell">
+                      <div className="flex gap-1">
+                        <button onClick={() => abrirEditar(r)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setConfirmId(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {modal && (
+        <Modal title={editId ? 'Editar residuo' : 'Registrar residuo'} onClose={() => setModal(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                <input className="input" value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} placeholder="RSD-001" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <input type="date" className="input" value={form.fecha} onChange={e => setForm({ ...form, fecha: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del residuo *</label>
+              <input className="input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Ej: Aceite usado, Cartón, Residuos orgánicos..." />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select className="input" value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}>
+                  {['Peligroso', 'No peligroso', 'Reciclable', 'Orgánico'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                <input className="input" type="number" value={form.cantidad} onChange={e => setForm({ ...form, cantidad: e.target.value })} placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Unidad</label>
+                <select className="input" value={form.unidad} onChange={e => setForm({ ...form, unidad: e.target.value })}>
+                  {['kg', 'toneladas', 'litros', 'm³', 'unidades'].map(u => <option key={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Empresa gestora</label>
+                <input className="input" value={form.gestor} onChange={e => setForm({ ...form, gestor: e.target.value })} placeholder="Quién retira el residuo" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Destino final</label>
+                <input className="input" value={form.destino} onChange={e => setForm({ ...form, destino: e.target.value })} placeholder="Ej: Reciclaje, Vertedero..." />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+              <textarea className="input resize-none" rows={2} value={form.observaciones} onChange={e => setForm({ ...form, observaciones: e.target.value })} placeholder="Certificado, notas adicionales..." />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setModal(false)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={guardar} className="flex-1 btn-primary">Guardar</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmId && (
+        <ConfirmDialog mensaje="Se eliminará este registro de residuo." onConfirm={() => { deleteResiduo(confirmId); setConfirmId(null); }} onCancel={() => setConfirmId(null)} />
+      )}
     </div>
   );
 }

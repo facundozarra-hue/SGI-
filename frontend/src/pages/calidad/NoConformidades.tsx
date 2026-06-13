@@ -1,38 +1,50 @@
 import { useState } from 'react';
-import { AlertCircle, Plus, Search } from 'lucide-react';
+import { AlertCircle, Plus, Pencil, Trash2, Download, Search } from 'lucide-react';
+import { useData, NoConformidad } from '../../context/DataContext';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import EmptyState from '../../components/ui/EmptyState';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { NoConformidad } from '../../types';
 
-const mockNC: NoConformidad[] = [
-  { id: '1', codigo: 'NC-2024-001', titulo: 'Producto no conforme en línea A', descripcion: 'Se detectaron defectos dimensionales en lote #4521', origen: 'Inspección de producción', estado: 'CERRADA', prioridad: 'ALTA', accionCorrectiva: 'Revisión de parámetros de máquina CNC', fechaDeteccion: '2024-01-03', fechaCierre: '2024-01-20', createdAt: '2024-01-03', responsable: { nombre: 'Carlos', apellido: 'López' } },
-  { id: '2', codigo: 'NC-2024-002', titulo: 'Incumplimiento de tiempo de entrega', descripcion: 'Retraso de 5 días en entrega a cliente XYZ', origen: 'Reclamación de cliente', estado: 'EN_PROCESO', prioridad: 'MEDIA', fechaDeteccion: '2024-01-08', createdAt: '2024-01-08', responsable: { nombre: 'María', apellido: 'Rodríguez' } },
-  { id: '3', codigo: 'NC-2024-003', titulo: 'Calibración de equipo vencida', descripcion: 'Vernier #VRN-045 sin calibración vigente', origen: 'Auditoría interna', estado: 'ABIERTA', prioridad: 'ALTA', fechaDeteccion: '2024-01-12', createdAt: '2024-01-12', responsable: { nombre: 'Pedro', apellido: 'Sánchez' } },
-  { id: '4', codigo: 'NC-2024-004', titulo: 'Documentación de proceso desactualizada', descripcion: 'PRC-PRD-007 sin actualizar desde hace 3 años', origen: 'Revisión documental', estado: 'ABIERTA', prioridad: 'BAJA', fechaDeteccion: '2024-01-15', createdAt: '2024-01-15', responsable: { nombre: 'Ana', apellido: 'García' } },
-  { id: '5', codigo: 'NC-2024-005', titulo: 'Fallo en trazabilidad de materiales', descripcion: 'Lote de materia prima sin identificación correcta', origen: 'Inspección de recepción', estado: 'EN_PROCESO', prioridad: 'ALTA', fechaDeteccion: '2024-01-18', createdAt: '2024-01-18', responsable: { nombre: 'Luis', apellido: 'Martínez' } },
-  { id: '6', codigo: 'NC-2024-006', titulo: 'Incidencia en soldadura sector B', descripcion: 'Fisuras detectadas en cordones de soldadura', origen: 'Control de calidad', estado: 'ABIERTA', prioridad: 'ALTA', fechaDeteccion: '2024-01-20', createdAt: '2024-01-20', responsable: { nombre: 'Carlos', apellido: 'López' } },
-];
+const VACIO: Omit<NoConformidad, 'id' | 'createdAt'> = {
+  codigo: '', titulo: '', descripcion: '', origen: '',
+  prioridad: 'Media', estado: 'Abierta', accionCorrectiva: '',
+  responsable: '', fechaDeteccion: new Date().toISOString().slice(0, 10), fechaCierre: '',
+};
 
 const prioridadColor: Record<string, string> = {
-  BAJA: 'text-gray-500 bg-gray-100',
-  MEDIA: 'text-yellow-700 bg-yellow-100',
-  ALTA: 'text-orange-700 bg-orange-100',
-  CRITICA: 'text-red-700 bg-red-100',
+  Baja: 'bg-gray-100 text-gray-600',
+  Media: 'bg-yellow-100 text-yellow-700',
+  Alta: 'bg-orange-100 text-orange-700',
+  Crítica: 'bg-red-100 text-red-700',
 };
 
 export default function NoConformidades() {
-  const [search, setSearch] = useState('');
-  const [estadoFilter, setEstadoFilter] = useState('Todos');
+  const { noConformidades, addNoConformidad, updateNoConformidad, deleteNoConformidad, exportarCSV } = useData();
+  const [busqueda, setBusqueda] = useState('');
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState(VACIO);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  const filtered = mockNC.filter((nc) => {
-    const matchSearch = nc.titulo.toLowerCase().includes(search.toLowerCase()) || nc.codigo.toLowerCase().includes(search.toLowerCase());
-    const matchEst = estadoFilter === 'Todos' || nc.estado === estadoFilter;
-    return matchSearch && matchEst;
-  });
+  const filtradas = noConformidades.filter(n =>
+    n.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+    n.codigo.toLowerCase().includes(busqueda.toLowerCase())
+  );
 
-  const counts = {
-    ABIERTA: mockNC.filter((n) => n.estado === 'ABIERTA').length,
-    EN_PROCESO: mockNC.filter((n) => n.estado === 'EN_PROCESO').length,
-    CERRADA: mockNC.filter((n) => n.estado === 'CERRADA').length,
+  const abiertas = noConformidades.filter(n => n.estado === 'Abierta').length;
+  const enProceso = noConformidades.filter(n => n.estado === 'En proceso').length;
+  const cerradas = noConformidades.filter(n => n.estado === 'Cerrada').length;
+
+  const abrirNuevo = () => { setForm(VACIO); setEditId(null); setModal(true); };
+  const abrirEditar = (n: NoConformidad) => {
+    const { id, createdAt, ...rest } = n; void id; void createdAt;
+    setForm(rest); setEditId(n.id); setModal(true);
+  };
+  const guardar = () => {
+    if (!form.titulo.trim()) return alert('El título es obligatorio');
+    if (editId) updateNoConformidad(editId, form); else addNoConformidad(form);
+    setModal(false);
   };
 
   return (
@@ -40,88 +52,137 @@ export default function NoConformidades() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <AlertCircle size={24} className="text-red-500" />
-            No Conformidades
+            <AlertCircle size={24} className="text-red-500" /> No Conformidades
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Gestión de no conformidades y acciones correctivas</p>
+          <p className="text-gray-500 text-sm">{noConformidades.length} registros totales</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Plus size={16} />
-          Nueva NC
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => exportarCSV('no_conformidades', noConformidades)} className="btn-secondary flex items-center gap-1.5 text-xs"><Download size={14} /> Exportar</button>
+          <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2"><Plus size={16} /> Nueva NC</button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Abiertas', count: counts.ABIERTA, color: 'bg-red-50 border-red-200 text-red-700' },
-          { label: 'En proceso', count: counts.EN_PROCESO, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-          { label: 'Cerradas', count: counts.CERRADA, color: 'bg-green-50 border-green-200 text-green-700' },
-        ].map((item) => (
-          <div key={item.label} className={`rounded-xl p-4 border ${item.color}`}>
-            <p className="text-3xl font-bold">{item.count}</p>
-            <p className="text-sm font-medium mt-1 opacity-80">{item.label}</p>
-          </div>
-        ))}
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+          <p className="text-3xl font-bold text-red-700">{abiertas}</p>
+          <p className="text-sm text-red-600 font-medium mt-1">Abiertas</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+          <p className="text-3xl font-bold text-blue-700">{enProceso}</p>
+          <p className="text-sm text-blue-600 font-medium mt-1">En proceso</p>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+          <p className="text-3xl font-bold text-green-700">{cerradas}</p>
+          <p className="text-sm text-green-600 font-medium mt-1">Cerradas</p>
+        </div>
       </div>
 
       <div className="card">
-        <div className="flex gap-3 mb-5">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar no conformidades..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input pl-9"
-            />
-          </div>
-          <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="input w-auto">
-            {['Todos', 'ABIERTA', 'EN_PROCESO', 'CERRADA', 'CANCELADA'].map((e) => (
-              <option key={e} value={e}>{e === 'Todos' ? 'Todos los estados' : e.replace('_', ' ')}</option>
-            ))}
-          </select>
+        <div className="relative mb-4">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input className="input pl-9" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-y border-gray-200">
-              <tr>
-                <th className="table-header">Código</th>
-                <th className="table-header">Título</th>
-                <th className="table-header">Origen</th>
-                <th className="table-header">Prioridad</th>
-                <th className="table-header">Estado</th>
-                <th className="table-header">Detección</th>
-                <th className="table-header">Responsable</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((nc) => (
-                <tr key={nc.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
-                  <td className="table-cell font-mono text-xs font-medium text-red-700">{nc.codigo}</td>
-                  <td className="table-cell">
-                    <p className="font-medium text-gray-900">{nc.titulo}</p>
-                    <p className="text-xs text-gray-500 truncate max-w-xs">{nc.descripcion}</p>
-                  </td>
-                  <td className="table-cell text-gray-500 text-xs">{nc.origen}</td>
-                  <td className="table-cell">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${prioridadColor[nc.prioridad]}`}>
-                      {nc.prioridad}
-                    </span>
-                  </td>
-                  <td className="table-cell"><StatusBadge status={nc.estado} /></td>
-                  <td className="table-cell text-gray-500">{new Date(nc.fechaDeteccion).toLocaleDateString('es-ES')}</td>
-                  <td className="table-cell text-gray-600">{nc.responsable?.nombre} {nc.responsable?.apellido}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="text-center py-10 text-gray-400 text-sm">No se encontraron no conformidades</div>
-          )}
-        </div>
+        {filtradas.length === 0 ? (
+          <EmptyState icon={<AlertCircle size={28} />} titulo={busqueda ? 'Sin resultados' : 'Sin no conformidades'} descripcion="Registrá una nueva no conformidad cuando detectes un problema." accion={!busqueda && <button onClick={abrirNuevo} className="btn-primary">+ Nueva NC</button>} />
+        ) : (
+          <div className="space-y-3">
+            {filtradas.map(n => (
+              <div key={n.id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      {n.codigo && <span className="font-mono text-xs text-red-700 font-semibold">{n.codigo}</span>}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${prioridadColor[n.prioridad]}`}>{n.prioridad}</span>
+                      <StatusBadge status={n.estado} />
+                    </div>
+                    <p className="font-semibold text-gray-900">{n.titulo}</p>
+                    {n.descripcion && <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{n.descripcion}</p>}
+                    <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                      {n.origen && <span>Origen: <span className="text-gray-600">{n.origen}</span></span>}
+                      {n.responsable && <span>Responsable: <span className="text-gray-600">{n.responsable}</span></span>}
+                      <span>Detectada: <span className="text-gray-600">{new Date(n.fechaDeteccion).toLocaleDateString('es-ES')}</span></span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => abrirEditar(n)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"><Pencil size={14} /></button>
+                    <button onClick={() => setConfirmId(n.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+                {n.accionCorrectiva && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Acción correctiva:</span> {n.accionCorrectiva}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {modal && (
+        <Modal title={editId ? 'Editar no conformidad' : 'Nueva no conformidad'} onClose={() => setModal(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                <input className="input" value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} placeholder="NC-001" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de detección</label>
+                <input type="date" className="input" value={form.fechaDeteccion} onChange={e => setForm({ ...form, fechaDeteccion: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+              <input className="input" value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Descripción breve del problema" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción detallada</label>
+              <textarea className="input resize-none" rows={3} value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} placeholder="¿Qué ocurrió? ¿Dónde y cuándo?" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Origen</label>
+                <select className="input" value={form.origen} onChange={e => setForm({ ...form, origen: e.target.value })}>
+                  <option value="">Seleccionar...</option>
+                  {['Auditoría', 'Inspección', 'Reclamo de cliente', 'Control de producción', 'Revisión documental', 'Otro'].map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad</label>
+                <select className="input" value={form.prioridad} onChange={e => setForm({ ...form, prioridad: e.target.value })}>
+                  {['Baja', 'Media', 'Alta', 'Crítica'].map(p => <option key={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select className="input" value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })}>
+                  {['Abierta', 'En proceso', 'Cerrada'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Responsable</label>
+                <input className="input" value={form.responsable} onChange={e => setForm({ ...form, responsable: e.target.value })} placeholder="Nombre del responsable" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Acción correctiva</label>
+              <textarea className="input resize-none" rows={2} value={form.accionCorrectiva} onChange={e => setForm({ ...form, accionCorrectiva: e.target.value })} placeholder="¿Qué se hará para resolver el problema?" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setModal(false)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={guardar} className="flex-1 btn-primary">Guardar</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmId && (
+        <ConfirmDialog mensaje="Se eliminará esta no conformidad permanentemente." onConfirm={() => { deleteNoConformidad(confirmId); setConfirmId(null); }} onCancel={() => setConfirmId(null)} />
+      )}
     </div>
   );
 }

@@ -1,123 +1,183 @@
 import { useState } from 'react';
-import { Siren, Plus, Search, CheckCircle, XCircle } from 'lucide-react';
-import StatusBadge from '../../components/ui/StatusBadge';
-import { Accidente } from '../../types';
+import { Siren, Plus, Pencil, Trash2, Download, CheckCircle, XCircle } from 'lucide-react';
+import { useData, Accidente } from '../../context/DataContext';
+import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import EmptyState from '../../components/ui/EmptyState';
 
-const mockAccidentes: Accidente[] = [
-  { id: '1', codigo: 'ACC-2024-001', tipo: 'Accidente de trabajo', descripcion: 'Caída al mismo nivel por suelo mojado en zona de acceso', lugar: 'Pasillo planta 1', fecha: '2024-01-08', lesionados: 1, diasBaja: 3, gravedad: 'LEVE', causas: 'Ausencia de señalización de suelo mojado, falta de drenaje', accionesCorrectivas: 'Señalización permanente, mejora del sistema de drenaje', investigado: true, createdAt: '2024-01-08', responsable: { nombre: 'Carlos', apellido: 'López' } },
-  { id: '2', codigo: 'ACC-2024-002', tipo: 'Casi accidente', descripcion: 'Trabajador casi atropellado por carretilla en almacén', lugar: 'Almacén principal', fecha: '2024-01-12', lesionados: 0, diasBaja: 0, gravedad: 'LEVE', causas: 'Visibilidad reducida, falta de separación zonas', accionesCorrectivas: 'Instalación de espejos convexos, marcado de carriles', investigado: true, createdAt: '2024-01-12', responsable: { nombre: 'María', apellido: 'Rodríguez' } },
-  { id: '3', codigo: 'ACC-2024-003', tipo: 'Accidente de trabajo', descripcion: 'Corte en mano por herramienta sin guarda de protección', lugar: 'Taller mecánico', fecha: '2024-01-18', lesionados: 1, diasBaja: 7, gravedad: 'GRAVE', causas: 'Guarda de seguridad retirada por operario', accionesCorrectivas: 'Formación obligatoria, bloqueo de máquina sin protecciones', investigado: false, createdAt: '2024-01-18', responsable: { nombre: 'Pedro', apellido: 'Sánchez' } },
-  { id: '4', codigo: 'ACC-2023-018', tipo: 'Incidente ambiental', descripcion: 'Pequeño derrame de aceite en zona de mantenimiento', lugar: 'Zona de mantenimiento', fecha: '2023-12-05', lesionados: 0, diasBaja: 0, gravedad: 'LEVE', causas: 'Recipiente en mal estado', accionesCorrectivas: 'Revisión periódica de recipientes, kit de emergencia instalado', investigado: true, createdAt: '2023-12-05', responsable: { nombre: 'Luis', apellido: 'Martínez' } },
-  { id: '5', codigo: 'ACC-2023-015', tipo: 'Enfermedad profesional', descripcion: 'Trabajador con lumbalgia por manejo manual de cargas', lugar: 'Almacén', fecha: '2023-11-20', lesionados: 1, diasBaja: 21, gravedad: 'GRAVE', causas: 'Falta de ayudas mecánicas, técnica incorrecta', accionesCorrectivas: 'Instalación de carros elevadores, formación ergonomía', investigado: true, createdAt: '2023-11-20', responsable: { nombre: 'Ana', apellido: 'García' } },
-];
+const VACIO: Omit<Accidente, 'id' | 'createdAt'> = {
+  codigo: '', tipo: 'Accidente de trabajo', descripcion: '', lugar: '',
+  fecha: new Date().toISOString().slice(0, 10), lesionados: '0',
+  diasBaja: '0', gravedad: 'Leve', causas: '', accionesCorrectivas: '', investigado: false,
+};
 
 export default function Accidentes() {
-  const [search, setSearch] = useState('');
-  const [gravedadFilter, setGravedadFilter] = useState('Todos');
+  const { accidentes, addAccidente, updateAccidente, deleteAccidente, exportarCSV } = useData();
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState(VACIO);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  const filtered = mockAccidentes.filter((a) => {
-    const matchSearch = a.descripcion.toLowerCase().includes(search.toLowerCase()) || a.codigo.toLowerCase().includes(search.toLowerCase()) || a.lugar.toLowerCase().includes(search.toLowerCase());
-    const matchGrav = gravedadFilter === 'Todos' || a.gravedad === gravedadFilter;
-    return matchSearch && matchGrav;
-  });
+  const abrirNuevo = () => { setForm(VACIO); setEditId(null); setModal(true); };
+  const abrirEditar = (a: Accidente) => {
+    const { id, createdAt, ...rest } = a; void id; void createdAt;
+    setForm(rest); setEditId(a.id); setModal(true);
+  };
+  const guardar = () => {
+    if (!form.descripcion.trim()) return alert('La descripción es obligatoria');
+    if (editId) updateAccidente(editId, form); else addAccidente(form);
+    setModal(false);
+  };
 
-  const totalLesionados = mockAccidentes.reduce((acc, a) => acc + a.lesionados, 0);
-  const totalDiasBaja = mockAccidentes.reduce((acc, a) => acc + a.diasBaja, 0);
-  const sinInvestigar = mockAccidentes.filter((a) => !a.investigado).length;
+  const totalLesionados = accidentes.reduce((s, a) => s + (parseInt(a.lesionados) || 0), 0);
+  const totalDiasBaja = accidentes.reduce((s, a) => s + (parseInt(a.diasBaja) || 0), 0);
+  const sinInvestigar = accidentes.filter(a => !a.investigado).length;
+
+  const gravedadColor: Record<string, string> = {
+    Leve: 'bg-yellow-100 text-yellow-700',
+    Grave: 'bg-orange-100 text-orange-700',
+    'Muy grave': 'bg-red-100 text-red-700',
+    Mortal: 'bg-red-900 text-red-100',
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Siren size={24} className="text-rose-600" />
-            Accidentes e Incidentes
+            <Siren size={24} className="text-rose-600" /> Accidentes e Incidentes
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Registro y seguimiento de siniestros · ISO 45001</p>
+          <p className="text-gray-500 text-sm">{accidentes.length} registros</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Plus size={16} />
-          Registrar accidente
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => exportarCSV('accidentes', accidentes)} className="btn-secondary flex items-center gap-1.5 text-xs"><Download size={14} /> Exportar</button>
+          <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2"><Plus size={16} /> Registrar</button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
-          <p className="text-3xl font-bold text-rose-700">{totalLesionados}</p>
-          <p className="text-sm font-medium text-rose-600 mt-1">Total lesionados</p>
+      {accidentes.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-center">
+            <p className="text-3xl font-bold text-rose-700">{totalLesionados}</p>
+            <p className="text-sm text-rose-600 font-medium mt-1">Lesionados total</p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+            <p className="text-3xl font-bold text-amber-700">{totalDiasBaja}</p>
+            <p className="text-sm text-amber-600 font-medium mt-1">Días de baja</p>
+          </div>
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+            <p className="text-3xl font-bold text-orange-700">{sinInvestigar}</p>
+            <p className="text-sm text-orange-600 font-medium mt-1">Sin investigar</p>
+          </div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <p className="text-3xl font-bold text-amber-700">{totalDiasBaja}</p>
-          <p className="text-sm font-medium text-amber-600 mt-1">Días de baja totales</p>
-        </div>
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-          <p className="text-3xl font-bold text-orange-700">{sinInvestigar}</p>
-          <p className="text-sm font-medium text-orange-600 mt-1">Sin investigar</p>
-        </div>
-      </div>
+      )}
 
       <div className="card">
-        <div className="flex gap-3 mb-5">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por descripción, código o lugar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input pl-9"
-            />
-          </div>
-          <select value={gravedadFilter} onChange={(e) => setGravedadFilter(e.target.value)} className="input w-auto">
-            {['Todos', 'LEVE', 'GRAVE', 'MUY_GRAVE', 'MORTAL'].map((g) => (
-              <option key={g} value={g}>{g === 'Todos' ? 'Todas las gravedades' : g.replace('_', ' ')}</option>
+        {accidentes.length === 0 ? (
+          <EmptyState icon={<Siren size={28} />} titulo="Sin accidentes registrados" descripcion="Registrá aquí todos los accidentes, incidentes y casi-accidentes." accion={<button onClick={abrirNuevo} className="btn-primary">+ Registrar</button>} />
+        ) : (
+          <div className="space-y-3">
+            {accidentes.map(a => (
+              <div key={a.id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      {a.codigo && <span className="font-mono text-xs text-rose-700 font-semibold">{a.codigo}</span>}
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{a.tipo}</span>
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${gravedadColor[a.gravedad]}`}>{a.gravedad}</span>
+                      {a.investigado
+                        ? <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle size={12} /> Investigado</span>
+                        : <span className="flex items-center gap-1 text-xs text-orange-500"><XCircle size={12} /> Sin investigar</span>}
+                    </div>
+                    <p className="font-semibold text-gray-900">{a.descripcion}</p>
+                    <div className="flex gap-4 mt-1 text-xs text-gray-400">
+                      <span>📍 {a.lugar}</span>
+                      <span>📅 {new Date(a.fecha).toLocaleDateString('es-ES')}</span>
+                      {parseInt(a.lesionados) > 0 && <span>👤 {a.lesionados} lesionado{parseInt(a.lesionados) !== 1 ? 's' : ''}</span>}
+                      {parseInt(a.diasBaja) > 0 && <span>🏥 {a.diasBaja} días de baja</span>}
+                    </div>
+                    {a.causas && <p className="text-xs text-gray-500 mt-2"><span className="font-medium text-gray-700">Causas:</span> {a.causas}</p>}
+                    {a.accionesCorrectivas && <p className="text-xs text-gray-500 mt-1"><span className="font-medium text-gray-700">Acciones:</span> {a.accionesCorrectivas}</p>}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => abrirEditar(a)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"><Pencil size={14} /></button>
+                    <button onClick={() => setConfirmId(a.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              </div>
             ))}
-          </select>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-y border-gray-200">
-              <tr>
-                <th className="table-header">Código</th>
-                <th className="table-header">Tipo</th>
-                <th className="table-header">Descripción</th>
-                <th className="table-header">Lugar</th>
-                <th className="table-header">Fecha</th>
-                <th className="table-header text-center">Lesionados</th>
-                <th className="table-header text-center">Días baja</th>
-                <th className="table-header">Gravedad</th>
-                <th className="table-header text-center">Investigado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((acc) => (
-                <tr key={acc.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
-                  <td className="table-cell font-mono text-xs font-medium text-rose-700">{acc.codigo}</td>
-                  <td className="table-cell text-xs text-gray-500">{acc.tipo}</td>
-                  <td className="table-cell max-w-xs">
-                    <p className="font-medium text-gray-900 text-sm truncate">{acc.descripcion}</p>
-                  </td>
-                  <td className="table-cell text-gray-500 text-sm">{acc.lugar}</td>
-                  <td className="table-cell text-gray-500">{new Date(acc.fecha).toLocaleDateString('es-ES')}</td>
-                  <td className="table-cell text-center font-semibold text-gray-800">{acc.lesionados}</td>
-                  <td className="table-cell text-center font-semibold text-gray-800">{acc.diasBaja}</td>
-                  <td className="table-cell"><StatusBadge status={acc.gravedad} /></td>
-                  <td className="table-cell text-center">
-                    {acc.investigado
-                      ? <CheckCircle size={16} className="text-green-500 mx-auto" />
-                      : <XCircle size={16} className="text-red-400 mx-auto" />
-                    }
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="text-center py-10 text-gray-400 text-sm">No se encontraron accidentes registrados</div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {modal && (
+        <Modal title={editId ? 'Editar registro' : 'Registrar accidente / incidente'} onClose={() => setModal(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                <input className="input" value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} placeholder="ACC-001" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select className="input" value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}>
+                  {['Accidente de trabajo', 'Casi accidente', 'Incidente ambiental', 'Enfermedad profesional'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
+              <textarea className="input resize-none" rows={3} value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} placeholder="¿Qué ocurrió exactamente?" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lugar</label>
+                <input className="input" value={form.lugar} onChange={e => setForm({ ...form, lugar: e.target.value })} placeholder="Ej: Planta 1, Almacén..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <input type="date" className="input" value={form.fecha} onChange={e => setForm({ ...form, fecha: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Gravedad</label>
+                <select className="input" value={form.gravedad} onChange={e => setForm({ ...form, gravedad: e.target.value })}>
+                  {['Leve', 'Grave', 'Muy grave', 'Mortal'].map(g => <option key={g}>{g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lesionados</label>
+                <input type="number" className="input" min="0" value={form.lesionados} onChange={e => setForm({ ...form, lesionados: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Días de baja</label>
+                <input type="number" className="input" min="0" value={form.diasBaja} onChange={e => setForm({ ...form, diasBaja: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Causas</label>
+              <textarea className="input resize-none" rows={2} value={form.causas} onChange={e => setForm({ ...form, causas: e.target.value })} placeholder="¿Por qué ocurrió?" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Acciones correctivas</label>
+              <textarea className="input resize-none" rows={2} value={form.accionesCorrectivas} onChange={e => setForm({ ...form, accionesCorrectivas: e.target.value })} placeholder="¿Qué se hará para que no vuelva a ocurrir?" />
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <input type="checkbox" id="inv" checked={form.investigado} onChange={e => setForm({ ...form, investigado: e.target.checked })} className="w-4 h-4 accent-green-600 cursor-pointer" />
+              <label htmlFor="inv" className="text-sm font-medium text-gray-700 cursor-pointer">El accidente ya fue investigado formalmente</label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setModal(false)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={guardar} className="flex-1 btn-primary">Guardar</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmId && (
+        <ConfirmDialog mensaje="Se eliminará este registro permanentemente." onConfirm={() => { deleteAccidente(confirmId); setConfirmId(null); }} onCancel={() => setConfirmId(null)} />
+      )}
     </div>
   );
 }

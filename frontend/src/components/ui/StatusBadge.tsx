@@ -1,83 +1,40 @@
-interface StatusBadgeProps {
-  status: string;
-  type?: 'documento' | 'nc' | 'auditoria' | 'riesgo' | 'residuo' | 'generic';
-}
-
 const colorMap: Record<string, string> = {
-  BORRADOR: 'bg-gray-100 text-gray-700',
-  REVISION: 'bg-yellow-100 text-yellow-700',
-  APROBADO: 'bg-green-100 text-green-700',
-  OBSOLETO: 'bg-red-100 text-red-700',
-  ABIERTA: 'bg-red-100 text-red-700',
-  EN_PROCESO: 'bg-blue-100 text-blue-700',
-  CERRADA: 'bg-green-100 text-green-700',
-  CANCELADA: 'bg-gray-100 text-gray-500',
-  PLANIFICADA: 'bg-blue-100 text-blue-700',
-  EN_CURSO: 'bg-indigo-100 text-indigo-700',
-  COMPLETADA: 'bg-green-100 text-green-700',
-  IDENTIFICADO: 'bg-yellow-100 text-yellow-700',
-  EN_TRATAMIENTO: 'bg-blue-100 text-blue-700',
-  CONTROLADO: 'bg-green-100 text-green-700',
-  BAJO: 'bg-green-100 text-green-700',
-  MEDIO: 'bg-yellow-100 text-yellow-700',
-  ALTO: 'bg-orange-100 text-orange-700',
-  CRITICO: 'bg-red-100 text-red-700',
-  PELIGROSO: 'bg-red-100 text-red-700',
-  NO_PELIGROSO: 'bg-gray-100 text-gray-700',
-  RECICLABLE: 'bg-green-100 text-green-700',
-  ORGANICO: 'bg-lime-100 text-lime-700',
-  INTERNA: 'bg-indigo-100 text-indigo-700',
-  EXTERNA: 'bg-purple-100 text-purple-700',
-  SEGUIMIENTO: 'bg-cyan-100 text-cyan-700',
-  LEVE: 'bg-yellow-100 text-yellow-700',
-  GRAVE: 'bg-orange-100 text-orange-700',
-  MUY_GRAVE: 'bg-red-100 text-red-700',
-  MORTAL: 'bg-red-900 text-red-100',
-  ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-gray-500',
+  // Estados documentos
+  'Borrador': 'bg-gray-100 text-gray-600',
+  'En revisión': 'bg-yellow-100 text-yellow-700',
+  'Aprobado': 'bg-green-100 text-green-700',
+  'Obsoleto': 'bg-red-100 text-red-700',
+  // Estados NC
+  'Abierta': 'bg-red-100 text-red-700',
+  'En proceso': 'bg-blue-100 text-blue-700',
+  'Cerrada': 'bg-green-100 text-green-700',
+  // Estados auditoría
+  'Planificada': 'bg-blue-100 text-blue-700',
+  'En curso': 'bg-indigo-100 text-indigo-700',
+  'Completada': 'bg-green-100 text-green-700',
+  'Cancelada': 'bg-gray-100 text-gray-500',
+  // Tipos auditoría
+  'Interna': 'bg-indigo-100 text-indigo-700',
+  'Externa': 'bg-purple-100 text-purple-700',
+  // Riesgos
+  'Identificado': 'bg-yellow-100 text-yellow-700',
+  'En tratamiento': 'bg-blue-100 text-blue-700',
+  'Controlado': 'bg-green-100 text-green-700',
+  // Residuos
+  'Peligroso': 'bg-red-100 text-red-700',
+  'No peligroso': 'bg-gray-100 text-gray-600',
+  'Reciclable': 'bg-green-100 text-green-700',
+  'Orgánico': 'bg-lime-100 text-lime-700',
+  // Aspectos
+  'Activo': 'bg-green-100 text-green-700',
+  'Inactivo': 'bg-gray-100 text-gray-500',
 };
 
-const labelMap: Record<string, string> = {
-  BORRADOR: 'Borrador',
-  REVISION: 'En revisión',
-  APROBADO: 'Aprobado',
-  OBSOLETO: 'Obsoleto',
-  ABIERTA: 'Abierta',
-  EN_PROCESO: 'En proceso',
-  CERRADA: 'Cerrada',
-  CANCELADA: 'Cancelada',
-  PLANIFICADA: 'Planificada',
-  EN_CURSO: 'En curso',
-  COMPLETADA: 'Completada',
-  IDENTIFICADO: 'Identificado',
-  EN_TRATAMIENTO: 'En tratamiento',
-  CONTROLADO: 'Controlado',
-  BAJO: 'Bajo',
-  MEDIO: 'Medio',
-  ALTO: 'Alto',
-  CRITICO: 'Crítico',
-  PELIGROSO: 'Peligroso',
-  NO_PELIGROSO: 'No peligroso',
-  RECICLABLE: 'Reciclable',
-  ORGANICO: 'Orgánico',
-  INTERNA: 'Interna',
-  EXTERNA: 'Externa',
-  SEGUIMIENTO: 'Seguimiento',
-  LEVE: 'Leve',
-  GRAVE: 'Grave',
-  MUY_GRAVE: 'Muy grave',
-  MORTAL: 'Mortal',
-  ACTIVO: 'Activo',
-  INACTIVO: 'Inactivo',
-};
-
-export default function StatusBadge({ status }: StatusBadgeProps) {
-  const colorClass = colorMap[status] ?? 'bg-gray-100 text-gray-700';
-  const label = labelMap[status] ?? status;
-
+export default function StatusBadge({ status }: { status: string }) {
+  const cls = colorMap[status] ?? 'bg-gray-100 text-gray-600';
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
-      {label}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+      {status}
     </span>
   );
 }
