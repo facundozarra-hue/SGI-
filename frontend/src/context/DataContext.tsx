@@ -19,6 +19,7 @@ export interface Documento {
   fechaRevision: string;
   responsable: string;
   observaciones: string;
+  enlace: string;
   createdAt: string;
 }
 

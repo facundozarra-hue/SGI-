@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Plus, Pencil, Trash2, Download, Search } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, Download, Search, ExternalLink, Link } from 'lucide-react';
 import { useData, Documento } from '../../context/DataContext';
 import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -9,7 +9,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 const VACIO: Omit<Documento, 'id' | 'createdAt'> = {
   codigo: '', titulo: '', categoria: 'Procedimiento', estado: 'Borrador',
   version: '1.0', fechaEmision: new Date().toISOString().slice(0, 10),
-  fechaRevision: '', responsable: '', observaciones: '',
+  fechaRevision: '', responsable: '', observaciones: '', enlace: '',
 };
 
 export default function Documentos() {
@@ -27,14 +27,16 @@ export default function Documentos() {
 
   const abrirNuevo = () => { setForm(VACIO); setEditId(null); setModal(true); };
   const abrirEditar = (d: Documento) => {
-    setForm({ codigo: d.codigo, titulo: d.titulo, categoria: d.categoria, estado: d.estado, version: d.version, fechaEmision: d.fechaEmision, fechaRevision: d.fechaRevision, responsable: d.responsable, observaciones: d.observaciones });
-    setEditId(d.id); setModal(true);
+    const { id, createdAt, ...rest } = d; void id; void createdAt;
+    setForm(rest); setEditId(d.id); setModal(true);
   };
   const guardar = () => {
     if (!form.titulo.trim()) return alert('El título es obligatorio');
     if (editId) updateDocumento(editId, form); else addDocumento(form);
     setModal(false);
   };
+
+  const conArchivo = documentos.filter(d => d.enlace).length;
 
   return (
     <div className="space-y-5">
@@ -43,7 +45,9 @@ export default function Documentos() {
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileText size={24} className="text-indigo-600" /> Documentos
           </h1>
-          <p className="text-gray-500 text-sm">Gestión documental · {documentos.length} registros</p>
+          <p className="text-gray-500 text-sm">
+            {documentos.length} registros · {conArchivo} con archivo vinculado
+          </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => exportarCSV('documentos', documentos)} className="btn-secondary flex items-center gap-1.5 text-xs">
@@ -54,6 +58,18 @@ export default function Documentos() {
           </button>
         </div>
       </div>
+
+      {documentos.length > 0 && conArchivo === 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+          <Link size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-blue-800">Vinculá tus archivos de Google Drive</p>
+            <p className="text-sm text-blue-600 mt-0.5">
+              Al editar un documento podés pegar el enlace de Google Drive para acceder al archivo directamente desde aquí.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="relative mb-4">
@@ -80,6 +96,7 @@ export default function Documentos() {
                   <th className="table-header">Estado</th>
                   <th className="table-header">Responsable</th>
                   <th className="table-header">Rev. próxima</th>
+                  <th className="table-header">Archivo</th>
                   <th className="table-header w-20"></th>
                 </tr>
               </thead>
@@ -92,7 +109,23 @@ export default function Documentos() {
                     <td className="table-cell text-center">{d.version}</td>
                     <td className="table-cell"><StatusBadge status={d.estado} /></td>
                     <td className="table-cell text-gray-500">{d.responsable || '—'}</td>
-                    <td className="table-cell text-gray-500">{d.fechaRevision ? new Date(d.fechaRevision).toLocaleDateString('es-ES') : '—'}</td>
+                    <td className="table-cell text-gray-500">
+                      {d.fechaRevision ? new Date(d.fechaRevision).toLocaleDateString('es-ES') : '—'}
+                    </td>
+                    <td className="table-cell">
+                      {d.enlace ? (
+                        <a
+                          href={d.enlace}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
+                        >
+                          <ExternalLink size={12} /> Ver archivo
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-300">Sin archivo</span>
+                      )}
+                    </td>
                     <td className="table-cell">
                       <div className="flex gap-1">
                         <button onClick={() => abrirEditar(d)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"><Pencil size={14} /></button>
@@ -152,9 +185,32 @@ export default function Documentos() {
                 <input type="date" className="input" value={form.fechaRevision} onChange={e => setForm({ ...form, fechaRevision: e.target.value })} />
               </div>
             </div>
+
+            {/* Campo de enlace a Google Drive */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+              <label className="block text-sm font-semibold text-blue-800 flex items-center gap-2">
+                <Link size={15} /> Enlace al archivo (Google Drive, OneDrive, etc.)
+              </label>
+              <input
+                className="input bg-white"
+                value={form.enlace}
+                onChange={e => setForm({ ...form, enlace: e.target.value })}
+                placeholder="Pegá aquí el enlace compartido del archivo..."
+              />
+              <p className="text-xs text-blue-600">
+                📌 En Google Drive: clic derecho en el archivo → <strong>Compartir</strong> → <strong>Copiar enlace</strong> → pegalo aquí.
+              </p>
+              {form.enlace && (
+                <a href={form.enlace} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:underline font-medium">
+                  <ExternalLink size={12} /> Verificar que el enlace funciona
+                </a>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
-              <textarea className="input resize-none" rows={3} value={form.observaciones} onChange={e => setForm({ ...form, observaciones: e.target.value })} placeholder="Notas adicionales..." />
+              <textarea className="input resize-none" rows={2} value={form.observaciones} onChange={e => setForm({ ...form, observaciones: e.target.value })} placeholder="Notas adicionales..." />
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(false)} className="flex-1 btn-secondary">Cancelar</button>
