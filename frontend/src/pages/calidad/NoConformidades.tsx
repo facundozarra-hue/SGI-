@@ -22,14 +22,18 @@ const prioridadColor: Record<string, string> = {
 export default function NoConformidades() {
   const { noConformidades, addNoConformidad, updateNoConformidad, deleteNoConformidad, exportarCSV } = useData();
   const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroPrioridad, setFiltroPrioridad] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(VACIO);
   const [editId, setEditId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const filtradas = noConformidades.filter(n =>
-    n.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
-    n.codigo.toLowerCase().includes(busqueda.toLowerCase())
+    (n.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+     n.codigo.toLowerCase().includes(busqueda.toLowerCase())) &&
+    (!filtroEstado || n.estado === filtroEstado) &&
+    (!filtroPrioridad || n.prioridad === filtroPrioridad)
   );
 
   const abiertas = noConformidades.filter(n => n.estado === 'Abierta').length;
@@ -78,9 +82,19 @@ export default function NoConformidades() {
       </div>
 
       <div className="card">
-        <div className="relative mb-4">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input className="input pl-9" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input className="input pl-9" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+          </div>
+          <select className="input sm:w-36" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+            <option value="">Todos los estados</option>
+            {['Abierta', 'En proceso', 'Cerrada'].map(s => <option key={s}>{s}</option>)}
+          </select>
+          <select className="input sm:w-36" value={filtroPrioridad} onChange={e => setFiltroPrioridad(e.target.value)}>
+            <option value="">Todas las prioridades</option>
+            {['Baja', 'Media', 'Alta', 'Crítica'].map(p => <option key={p}>{p}</option>)}
+          </select>
         </div>
 
         {filtradas.length === 0 ? (

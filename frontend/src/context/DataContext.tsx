@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc,
+  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -148,7 +148,20 @@ interface DataContextType {
   updateAccidente: (id: string, d: Partial<Accidente>) => void;
   deleteAccidente: (id: string) => void;
   exportarCSV: (nombre: string, datos: object[]) => void;
+  importarBackup: (data: BackupData) => Promise<void>;
+  borrarTodo: () => Promise<void>;
   cargando: boolean;
+}
+
+export interface BackupData {
+  empresa?: Empresa;
+  documentos?: Omit<Documento, 'id'>[];
+  noConformidades?: Omit<NoConformidad, 'id'>[];
+  auditorias?: Omit<Auditoria, 'id'>[];
+  aspectos?: Omit<AspectoAmbiental, 'id'>[];
+  residuos?: Omit<Residuo, 'id'>[];
+  riesgos?: Omit<Riesgo, 'id'>[];
+  accidentes?: Omit<Accidente, 'id'>[];
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -292,6 +305,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
     URL.revokeObjectURL(url);
   }, []);
 
+  const importarBackup = useCallback(async (data: BackupData) => {
+    const batch = writeBatch(db);
+    const colecciones: [string, object[] | undefined][] = [
+      ['documentos', data.documentos],
+      ['noConformidades', data.noConformidades],
+      ['auditorias', data.auditorias],
+      ['aspectos', data.aspectos],
+      ['residuos', data.residuos],
+      ['riesgos', data.riesgos],
+      ['accidentes', data.accidentes],
+    ];
+    colecciones.forEach(([col, items]) => {
+      items?.forEach(item => {
+        const ref = doc(collection(db, col));
+        batch.set(ref, item);
+      });
+    });
+    await batch.commit();
+    if (data.empresa) await setDoc(doc(db, 'config', 'empresa'), data.empresa);
+  }, []);
+
+  const borrarTodo = useCallback(async () => {
+    const colecciones = ['documentos', 'noConformidades', 'auditorias', 'aspectos', 'residuos', 'riesgos', 'accidentes'];
+    const todosLosItems = [documentos, noConformidades, auditorias, aspectos, residuos, riesgos, accidentes];
+    const batch = writeBatch(db);
+    colecciones.forEach((col, i) => {
+      todosLosItems[i].forEach(item => {
+        batch.delete(doc(db, col, item.id));
+      });
+    });
+    await batch.commit();
+  }, [documentos, noConformidades, auditorias, aspectos, residuos, riesgos, accidentes]);
+
   return (
     <DataContext.Provider value={{
       empresa, setEmpresa,
@@ -303,6 +349,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       riesgos, addRiesgo, updateRiesgo, deleteRiesgo,
       accidentes, addAccidente, updateAccidente, deleteAccidente,
       exportarCSV,
+      importarBackup,
+      borrarTodo,
       cargando,
     }}>
       {children}
@@ -315,3 +363,4 @@ export function useData() {
   if (!ctx) throw new Error('useData debe usarse dentro de DataProvider');
   return ctx;
 }
+// Esta línea no se agrega — ver nota abajo

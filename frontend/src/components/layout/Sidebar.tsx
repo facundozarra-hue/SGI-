@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import {
   LayoutDashboard, ShieldCheck, Leaf, HardHat,
   FileText, AlertCircle, ClipboardList,
   Recycle, Trash2, AlertTriangle, Siren,
-  ChevronDown, ChevronRight, Building2, Settings,
+  ChevronDown, ChevronRight, Building2, Settings, X,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
@@ -15,13 +15,18 @@ type NavItem = NavSingle | NavGroup;
 
 function isGroup(item: NavItem): item is NavGroup { return 'children' in item; }
 
-export default function Sidebar() {
+interface SidebarProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation();
   const { documentos, noConformidades, auditorias, aspectos, residuos, riesgos, accidentes, empresa } = useData();
-  const [open, setOpen] = useState<string[]>(['Calidad', 'Medio Ambiente', 'Seguridad y Salud']);
+  const [expanded, setExpanded] = useState<string[]>(['Calidad', 'Medio Ambiente', 'Seguridad y Salud']);
 
   const toggle = (label: string) =>
-    setOpen(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]);
+    setExpanded(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]);
 
   const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/', icon: <LayoutDashboard size={18} /> },
@@ -51,17 +56,24 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-60 bg-gray-900 min-h-screen flex flex-col flex-shrink-0">
+    <aside className={`
+      fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 flex flex-col transition-transform duration-300 ease-in-out
+      md:relative md:translate-x-0 md:z-auto md:w-60 md:flex-shrink-0
+      ${open ? 'translate-x-0' : '-translate-x-full'}
+    `}>
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-gray-700">
         <div className="bg-indigo-600 rounded-lg p-1.5 flex-shrink-0">
           <Building2 size={18} className="text-white" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-white font-bold text-sm truncate leading-tight">
             {empresa.nombre || 'SGI'}
           </p>
           <p className="text-gray-400 text-xs">Sistema de Gestión</p>
         </div>
+        <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white p-1">
+          <X size={18} />
+        </button>
       </div>
 
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
@@ -69,6 +81,7 @@ export default function Sidebar() {
           if (!isGroup(item)) {
             return (
               <NavLink key={item.href} to={item.href} end={item.href === '/'}
+                onClick={onClose}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
                 }>
@@ -76,7 +89,7 @@ export default function Sidebar() {
               </NavLink>
             );
           }
-          const isOpen = open.includes(item.label);
+          const isOpen = expanded.includes(item.label);
           const hasActive = item.children.some(c => location.pathname === c.href);
           return (
             <div key={item.label}>
@@ -90,6 +103,7 @@ export default function Sidebar() {
                 <div className="ml-3 mt-0.5 pl-3 border-l border-gray-700 space-y-0.5">
                   {item.children.map(child => (
                     <NavLink key={child.href} to={child.href}
+                      onClick={onClose}
                       className={({ isActive }) =>
                         `flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-indigo-600 text-white font-medium' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`
                       }>

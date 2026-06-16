@@ -15,14 +15,18 @@ const VACIO: Omit<Documento, 'id' | 'createdAt'> = {
 export default function Documentos() {
   const { documentos, addDocumento, updateDocumento, deleteDocumento, exportarCSV } = useData();
   const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(VACIO);
   const [editId, setEditId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const filtrados = documentos.filter(d =>
-    d.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
-    d.codigo.toLowerCase().includes(busqueda.toLowerCase())
+    (d.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+     d.codigo.toLowerCase().includes(busqueda.toLowerCase())) &&
+    (!filtroEstado || d.estado === filtroEstado) &&
+    (!filtroCategoria || d.categoria === filtroCategoria)
   );
 
   const abrirNuevo = () => { setForm(VACIO); setEditId(null); setModal(true); };
@@ -72,9 +76,19 @@ export default function Documentos() {
       )}
 
       <div className="card">
-        <div className="relative mb-4">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input className="input pl-9" placeholder="Buscar por título o código..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input className="input pl-9" placeholder="Buscar por título o código..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+          </div>
+          <select className="input sm:w-36" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+            <option value="">Todos los estados</option>
+            {['Borrador', 'En revisión', 'Aprobado', 'Obsoleto'].map(s => <option key={s}>{s}</option>)}
+          </select>
+          <select className="input sm:w-40" value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
+            <option value="">Todas las categorías</option>
+            {['Manual', 'Procedimiento', 'Instrucción', 'Formulario', 'Registro', 'Política'].map(c => <option key={c}>{c}</option>)}
+          </select>
         </div>
 
         {filtrados.length === 0 ? (
