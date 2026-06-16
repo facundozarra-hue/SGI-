@@ -198,7 +198,9 @@ export default function Documentos() {
                 placeholder="Pegá aquí el enlace compartido del archivo..."
               />
               <p className="text-xs text-blue-600">
-                📌 En Google Drive: clic derecho en el archivo → <strong>Compartir</strong> → <strong>Copiar enlace</strong> → pegalo aquí.
+                📌 <strong>Google Drive:</strong> clic derecho → Compartir → Copiar enlace<br />
+                📌 <strong>OneDrive:</strong> clic derecho → Compartir → Cualquier persona → Copiar enlace<br />
+                📌 <strong>Dropbox / otro:</strong> cualquier enlace compartido funciona igual.
               </p>
               {form.enlace && (
                 <a href={form.enlace} target="_blank" rel="noopener noreferrer"
