@@ -25,7 +25,7 @@ function AppRoutes() {
   if (!auth.isAuthenticated) {
     return (
       <Routes>
-        <Route path="*" element={<Login onLogin={auth.login} />} />
+        <Route path="*" element={<Login />} />
       </Routes>
     );
   }

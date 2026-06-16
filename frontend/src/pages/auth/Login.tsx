@@ -1,37 +1,22 @@
 import { useState, FormEvent } from 'react';
 import { Building2, Lock, Mail, AlertCircle } from 'lucide-react';
-import { authService } from '../../services/api';
-import { User } from '../../types';
+import { useAuth } from '../../hooks/useAuth';
 
-interface LoginProps {
-  onLogin: (token: string, user: User) => void;
-}
-
-export default function Login({ onLogin }: LoginProps) {
-  const [email, setEmail] = useState('admin@empresa.com');
-  const [password, setPassword] = useState('admin123');
+export default function Login() {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleDemoLogin = () => {
-    onLogin('demo-token', {
-      id: 'demo',
-      email: 'admin@empresa.com',
-      nombre: 'Admin',
-      apellido: 'Demo',
-      role: 'ADMIN',
-    });
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await authService.login(email, password);
-      onLogin(res.data.token, res.data.user);
-    } catch {
-      handleDemoLogin();
+      await login(email, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
@@ -68,7 +53,7 @@ export default function Login({ onLogin }: LoginProps) {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={e => setEmail(e.target.value)}
                   className="input pl-9"
                   placeholder="tu@empresa.com"
                   required
@@ -85,7 +70,7 @@ export default function Login({ onLogin }: LoginProps) {
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   className="input pl-9"
                   placeholder="••••••••"
                   required
@@ -100,21 +85,11 @@ export default function Login({ onLogin }: LoginProps) {
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </button>
-
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              className="w-full bg-emerald-500 text-white py-2.5 rounded-lg font-semibold hover:bg-emerald-600 transition-colors"
-            >
-              ⚡ Entrar en modo demo (sin backend)
-            </button>
           </form>
 
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs font-semibold text-gray-500 mb-2">Credenciales de demo:</p>
-            <p className="text-xs text-gray-600">Email: <span className="font-mono">admin@empresa.com</span></p>
-            <p className="text-xs text-gray-600">Contraseña: <span className="font-mono">admin123</span></p>
-          </div>
+          <p className="text-xs text-gray-400 text-center mt-6">
+            Acceso exclusivo para usuarios autorizados
+          </p>
         </div>
 
         <p className="text-center text-indigo-300 text-xs mt-6">
